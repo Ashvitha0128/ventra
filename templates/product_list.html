@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+        <h2>Products</h2>
+        <p class="text-muted">Manage your inventory and return to dashboard anytime.</p>
+    </div>
+    <div>
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary me-2">Home</a>
+                <a href="{% url 'add_product' %}" class="btn btn-primary">Add Product</a>
+    </div>
+</div>
+
+<div class="mb-3 d-flex align-items-center">
+    <form method="get" id="searchForm" class="d-flex w-100">
+        <input type="search" name="q" id="searchInput" class="form-control me-2" placeholder="Search products by name or category" value="{{ q }}">
+                <select id="voiceLang" class="form-select me-2" style="max-width:160px">
+                    <option value="en-US" selected>English (US)</option>
+                    <option value="en-GB">English (UK)</option>
+                    <option value="hi-IN">Hindi (India)</option>
+                    <option value="ta-IN">தமிழ் (Tamil)</option>
+                    <option value="es-ES">Español (ES)</option>
+                    <option value="fr-FR">Français (FR)</option>
+                    <option value="de-DE">Deutsch (DE)</option>
+                </select>
+        <button type="button" id="voiceBtn" class="btn btn-outline-primary me-2" title="Speak to search"><i class="fa fa-microphone"></i></button>
+        <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+    <div id="voiceStatus" class="ms-3 text-muted" style="min-width:140px"></div>
+</div>
+
+<!-- Mic overlay -->
+<div id="micOverlay" class="mic-overlay d-none" aria-hidden="true">
+    <i class="fa fa-microphone"></i>
+    <span>Speak now</span>
+</div>
+
+<!-- Live transcript shown while speaking -->
+<div id="liveTranscript" class="live-transcript d-none" aria-hidden="true"></div>
+
+<table class="table table-bordered table-striped">
+
+    <thead class="table-dark text-center">
+        <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Minimum Stock</th>
+            <th>Image</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for product in products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.category }}</td>
+            <td>₹{{ product.price }}</td>
+            <td>{{ product.quantity }}</td>
+            <td>{{ product.minimum_stock }}</td>
+
+            <td>
+                {% if product.image %}
+                    <img src="{{ product.image.url }}"
+                         width="80">
+                {% else %}
+                    No Image
+                {% endif %}
+            </td>
+
+            <td>
+                <div class="action-box action-pill d-flex align-items-center">
+                    <a href="{% url 'stock_in' product.pk %}" class="btn btn-success btn-sm me-1" title="Stock In">
+                        <i class="fa fa-plus"></i>
+                        <span class="action-label">In</span>
+                    </a>
+                    <a href="{% url 'stock_out' product.pk %}" class="btn btn-secondary btn-sm me-1" title="Stock Out">
+                        <i class="fa fa-minus"></i>
+                        <span class="action-label">Out</span>
+                    </a>
+                    <a href="{% url 'edit_product' product.pk %}" class="btn btn-warning btn-sm me-1" title="Edit">
+                        <i class="fa fa-edit"></i>
+                        <span class="action-label">Edit</span>
+                    </a>
+                    <form method="post" action="{% url 'delete_product' product.pk %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Delete {{ product.name }}?');" title="Delete">
+                            <i class="fa fa-trash"></i>
+                            <span class="action-label">Delete</span>
+                        </button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+    {% empty %}
+        <tr>
+            <td colspan="7">
+                No Products Available
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+
+</table>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Voice search using Web Speech API
+const voiceBtn = document.getElementById('voiceBtn');
+const searchInput = document.getElementById('searchInput');
+const voiceStatus = document.getElementById('voiceStatus');
+const micOverlay = document.getElementById('micOverlay');
+const listeningBadge = document.getElementById('listeningBadge');
+
+if (voiceBtn) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        voiceBtn.style.display = 'none';
+    } else {
+                const rec = new SpeechRecognition();
+                const voiceLang = document.getElementById('voiceLang');
+                rec.lang = (voiceLang && voiceLang.value) ? voiceLang.value : 'en-US';
+                rec.interimResults = true; // show partial results
+                rec.maxAlternatives = 1;
+                rec.continuous = false;
+                let isRecording = false;
+
+                // Update recognition language when selector changes
+                if (voiceLang) {
+                    voiceLang.addEventListener('change', () => {
+                        try { rec.lang = voiceLang.value; } catch (e) { /* ignore */ }
+                    });
+                }
+
+        voiceBtn.addEventListener('click', () => {
+            // show overlay immediately so user knows to allow/ speak
+            if (micOverlay) {
+                micOverlay.classList.remove('d-none');
+                micOverlay.setAttribute('aria-hidden', 'false');
+                micOverlay.querySelector('span').textContent = 'Preparing...';
+            }
+            if (listeningBadge) {
+                listeningBadge.classList.remove('d-none');
+                listeningBadge.querySelector('.badge-text').textContent = 'Preparing...';
+            }
+            voiceStatus.textContent = 'Preparing...';
+            try {
+                if (!isRecording) {
+                    rec.start();
+                } else {
+                    rec.stop();
+                }
+            } catch (e) {
+                console.error(e);
+                voiceStatus.textContent = 'Voice unavailable';
+                if (micOverlay) {
+                    micOverlay.querySelector('span').textContent = 'Microphone unavailable';
+                    setTimeout(() => { micOverlay.classList.add('d-none'); micOverlay.setAttribute('aria-hidden','true'); }, 1400);
+                }
+            }
+        });
+
+        rec.onstart = () => {
+            isRecording = true;
+            voiceStatus.textContent = 'Listening...';
+            voiceBtn.classList.add('btn-danger');
+            if (micOverlay) { micOverlay.classList.remove('d-none'); micOverlay.setAttribute('aria-hidden', 'false'); micOverlay.querySelector('span').textContent = 'Speak now'; }
+            if (listeningBadge) { listeningBadge.classList.remove('d-none'); listeningBadge.querySelector('.badge-text').textContent = 'Listening'; }
+        };
+
+        rec.onspeechend = () => {
+            // user stopped speaking; end session
+            try { rec.stop(); } catch (e) {}
+        };
+
+        rec.addEventListener('result', (ev) => {
+            // assemble transcript from results (handles interim)
+            let interim = '';
+            let final = '';
+            for (let i = 0; i < ev.results.length; i++) {
+                const r = ev.results[i];
+                if (r.isFinal) final += r[0].transcript;
+                else interim += r[0].transcript;
+            }
+            const live = document.getElementById('liveTranscript');
+            if (interim) {
+                voiceStatus.textContent = `Heard: "${interim}" (listening...)`;
+                searchInput.value = interim;
+                if (live) { live.textContent = interim; live.classList.remove('d-none'); live.setAttribute('aria-hidden','false'); }
+            }
+            if (final) {
+                voiceStatus.textContent = `Heard: "${final}"`;
+                searchInput.value = final;
+                if (live) { live.textContent = final; }
+                // submit form
+                document.getElementById('searchForm').submit();
+            }
+        });
+
+                rec.onend = () => {
+                        isRecording = false;
+                            voiceBtn.classList.remove('btn-danger');
+                            if (micOverlay) { micOverlay.classList.add('d-none'); micOverlay.setAttribute('aria-hidden', 'true'); }
+                            if (listeningBadge) { listeningBadge.classList.add('d-none'); }
+                                setTimeout(() => { if (voiceStatus.textContent === 'Listening...') voiceStatus.textContent = ''; }, 800);
+                                const live = document.getElementById('liveTranscript');
+                                if (live) { setTimeout(() => { live.classList.add('d-none'); live.setAttribute('aria-hidden','true'); }, 1800); }
+                };
+
+                rec.onerror = (e) => {
+                        console.error('Speech error', e);
+                        if (e && e.error === 'not-allowed') voiceStatus.textContent = 'Microphone permission denied';
+                        else if (e && e.error === 'no-speech') voiceStatus.textContent = 'No speech detected';
+                        else voiceStatus.textContent = 'Voice error';
+                        isRecording = false;
+                        voiceBtn.classList.remove('btn-danger');
+                        if (micOverlay) { micOverlay.classList.add('d-none'); micOverlay.setAttribute('aria-hidden', 'true'); }
+                        if (listeningBadge) { listeningBadge.classList.add('d-none'); }
+                };
+    }
+}
+</script>
+{% endblock %}
+
+
+
+
+
+
+

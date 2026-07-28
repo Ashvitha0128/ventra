@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="text-center mb-4">
+    <h2 class="page-title">Dashboard</h2>
+    <p class="lead text-muted mb-0">Welcome back — overview of inventory</p>
+</div>
+
+{% if carousel_items %}
+<div class="container-fluid px-0 mb-4 inventory-wrapper">
+<div id="inventoryCarousel" class="carousel slide inventory-carousel" data-bs-ride="carousel" data-bs-interval="4500" data-bs-pause="hover">
+
+    <div class="carousel-indicators">
+        {% for item in carousel_items %}
+        <button type="button" data-bs-target="#inventoryCarousel" data-bs-slide-to="{{ forloop.counter0 }}" class="{% if forloop.first %}active{% endif %}" aria-current="{% if forloop.first %}true{% endif %}" aria-label="Slide {{ forloop.counter }}"></button>
+        {% endfor %}
+    </div>
+
+    <div class="carousel-inner">
+        {% for item in carousel_items %}
+        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+            <img src="{{ item.url }}"
+                 class="d-block w-100"
+                 alt="{{ item.title }}"
+                 style="height:70vh; min-height:420px; object-fit:cover;">
+            {% if item.title %}
+            <div class="carousel-caption d-none d-md-block">
+                <h5>{{ item.title }}</h5>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <button class="carousel-control-prev" type="button"
+            data-bs-target="#inventoryCarousel"
+            data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+        <span class="visually-hidden">Previous</span>
+    </button>
+
+    <button class="carousel-control-next" type="button"
+            data-bs-target="#inventoryCarousel"
+            data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+        <span class="visually-hidden">Next</span>
+    </button>
+
+    </div>
+    </div>
+    </div>
+{% else %}
+<div class="mb-4">
+    <div class="card text-white bg-secondary" style="height:70vh; min-height:420px;">
+        <div class="card-body d-flex align-items-center justify-content-center">
+            <h4 class="mb-0">No banner or product images available — upload via admin.</h4>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row stats-row g-3">
+    <div class="col-sm-6 col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3 text-primary"><i class="fa-solid fa-box-open fa-2x"></i></div>
+                <div>
+                    <div class="text-muted">Total Products</div>
+                    <h2>{{ total_products }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3 text-success"><i class="fa-solid fa-plus fa-2x"></i></div>
+                <div>
+                    <div class="text-muted">Stock In</div>
+                    <h2>{{ stock_in }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3 text-danger"><i class="fa-solid fa-minus fa-2x"></i></div>
+                <div>
+                    <div class="text-muted">Stock Out</div>
+                    <h2>{{ stock_out }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <div class="me-3 text-info"><i class="fa-solid fa-layer-group fa-2x"></i></div>
+                <div>
+                    <div class="text-muted">Available Stock</div>
+                    <h2>{{ available_stock }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-5">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+            <h3 class="mb-1">Stock Prediction</h3>
+            <p class="text-muted mb-0">Projected inventory health based on minimum stock thresholds.</p>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Qty</th>
+                    <th>Minimum</th>
+                    <th>Status</th>
+                    <th>Prediction</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in stock_predictions %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.minimum_stock }}</td>
+                    <td>
+                        <span class="badge {% if item.status == 'Out of Stock' %}bg-danger{% elif item.status == 'Critical' %}bg-warning text-dark{% elif item.status == 'Warning' %}bg-info text-dark{% else %}bg-success{% endif %}">{{ item.status }}</span>
+                    </td>
+                    <td>{{ item.prediction }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">No prediction data available.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

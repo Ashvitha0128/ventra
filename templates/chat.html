@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+  <h3>Smart Chat</h3>
+  <div class="card p-3 mb-3">
+    <div id="chatWindow" style="min-height:200px; max-height:400px; overflow:auto;">
+      <div class="text-muted">Ask me about Ventra or inventory. Examples: "Which products are low in stock?"</div>
+    </div>
+  </div>
+
+  <form id="chatForm" class="d-flex">
+    {% csrf_token %}
+    <input id="chatInput" class="form-control me-2" placeholder="Ask a question..." autocomplete="off">
+    <button type="submit" class="btn btn-primary">Send</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function appendMessage(who, text){
+  const win = document.getElementById('chatWindow');
+  const div = document.createElement('div');
+  div.className = who === 'user' ? 'text-end mb-2' : 'text-start mb-2';
+  div.innerHTML = `<div class="d-inline-block p-2 rounded ${who==='user' ? 'bg-primary text-white' : 'bg-light text-dark'}">${text}</div>`;
+  win.appendChild(div);
+  win.scrollTop = win.scrollHeight;
+}
+
+const form = document.getElementById('chatForm');
+form.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  appendMessage('user', text);
+  input.value = '';
+
+  const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+  const res = await fetch('{% url "chat_api" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrftoken
+    },
+    body: JSON.stringify({ message: text })
+  });
+  const data = await res.json();
+  appendMessage('bot', data.reply);
+});
+</script>
+{% endblock %}

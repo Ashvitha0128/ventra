@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="page-header mb-4">
+  <div>
+    <p class="text-uppercase text-danger small mb-2">Alerts</p>
+    <h2 class="fw-bold mb-1">Low Stock Items</h2>
+    <p class="text-muted mb-0">Products at or below minimum stock are detected automatically and shown here.</p>
+  </div>
+  <div>
+    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary btn-sm">Home</a>
+  </div>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+  <div class="card-body p-0">
+
+    {% if products %}
+
+    <table class="table table-hover align-middle mb-0">
+
+        <thead class="table-danger">
+            <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Minimum Stock</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        {% for product in products %}
+        <tr>
+
+            <td>{{ product.name }}</td>
+
+            <td>{{ product.category }}</td>
+
+            <td>
+                <span class="badge bg-warning text-dark">
+                    {{ product.quantity }}
+                </span>
+            </td>
+
+            <td>{{ product.minimum_stock }}</td>
+
+            <td>
+                {% if product.quantity == 0 %}
+                    <span class="badge bg-danger">
+                        Out of Stock
+                    </span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">
+                        Low Stock
+                    </span>
+                {% endif %}
+            </td>
+
+        </tr>
+        {% endfor %}
+
+        </tbody>
+
+    </table>
+
+    {% else %}
+
+    <div class="alert alert-success border-0 shadow-sm">
+        ✅ No low stock products found.
+    </div>
+
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}
